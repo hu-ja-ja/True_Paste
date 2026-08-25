@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>True Paste</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    p.desc {
+      color: gray;
+    }
+
+    button {
+      font-size: 0.9rem;
+      padding: 0.4em 1em;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+
+    .box {
+      border: 1px solid gray;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      overflow: auto;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .hljs-tag {
+      color: #8b949e;
+    }
+
+    .hljs-name {
+      color: #7ee787;
+    }
+
+    .hljs-attr {
+      color: #d2a8ff;
+    }
+
+    .hljs-string {
+      color: #a5d6ff;
+    }
+
+    .hljs-comment {
+      color: #8b949e;
+      font-style: italic;
+    }
+
+    .hljs-doctag,
+    .hljs-meta {
+      color: #ffa657;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>True Paste</h1>
+  <p class="desc">クリップボードの内容をそのまま貼り付けます。<br><strong>Ctrl+V</strong>（macOS は ⌘V）で貼り付けてください。</p>
+
+  <button id="btn">ボタンで貼り付け（タッチ端末用 / Chrome 系のみ）</button>
+  <button id="hlbtn">ハイライト: OFF</button>
+
+  <p id="status"></p>
+  <div class="box">
+    <pre id="text"></pre>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    let lastText = '';
+    let lastHtml = '';
+    let hlOn = false;
+
+    function render() {
+      const src = lastHtml || lastText || '';
+      $('status').textContent = lastHtml ? 'HTML形式を検出' : (lastText ? '' : 'テキスト形式なし');
+      if (hlOn && window.hljs && src) {
+        $('text').innerHTML = hljs.highlight(src, { language: 'xml' }).value;
+      } else {
+        $('text').textContent = src;
+      }
+      $('hlbtn').textContent = 'ハイライト: ' + (hlOn ? 'ON' : 'OFF');
+    }
+
+    document.addEventListener('paste', e => {
+      e.preventDefault();
+      lastText = e.clipboardData.getData('text/plain');
+      lastHtml = e.clipboardData.getData('text/html');
+      render();
+    });
+
+    $('btn').addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard.read) {
+          const items = await navigator.clipboard.read();
+          for (const item of items) {
+            if (item.types.includes('text/html')) {
+              lastHtml = await (await item.getType('text/html')).text();
+            }
+            if (item.types.includes('text/plain')) {
+              lastText = await (await item.getType('text/plain')).text();
+            }
+          }
+        } else {
+          lastText = await navigator.clipboard.readText();
+        }
+        render();
+      } catch (err) {
+        lastText = lastHtml = '';
+        $('text').textContent = '読み取りに失敗しました: ' + err.message;
+      }
+    });
+
+    $('hlbtn').addEventListener('click', () => {
+      hlOn = !hlOn;
+      render();
+    });
+  </script>
+  <script src="vendor/hljs.min.js"></script>
+</body>
+
+</html>
